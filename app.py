@@ -18,6 +18,11 @@ from dotenv import load_dotenv
 # groq_api_key = os.environ['GROQ_API_KEY']
 
 # Initialize Vector DB and Processing Steps
+
+# Initialize session state for chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 if 'vectordb' not in st.session_state:
     st.session_state.loader = WebBaseLoader('https://docs.smith.langchain.com/')
     st.session_state.documents = st.session_state.loader.load()
@@ -64,17 +69,42 @@ if 'retrieval_chain' not in st.session_state:
 
 st.title('RAG-Project-Using-OpenSource-And-Groq')
 
+# Display previous messages in chat format
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
 # User Input
 user_input = st.chat_input('Enter what you want to ask...')
-
+ 
 if user_input:
+
+    # Add user input to chat history
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
     start = time.process_time()
     
     response = st.session_state.retrieval_chain.invoke({'input': user_input})
     response_time = time.process_time() - start
     
     st.write(f"Response time: {response_time:.2f} seconds")
-    st.write(response['answer'])
+    # st.write(response['answer'])
+
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(user_input)
+
+    # Display AI response
+    with st.chat_message("assistant", avatar="🤖"):
+        message_placeholder = st.empty()
+        full_response = ""
+        for chunk in response['answer']:
+            full_response += chunk
+            message_placeholder.markdown(full_response + "▌")
+            
+        message_placeholder.markdown(full_response)
+
+    # Add AI response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": response})
 
     # Show document similarity search results
     with st.expander("Document Similarity Search"):
